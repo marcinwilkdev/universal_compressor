@@ -32,4 +32,28 @@ impl Bits {
             self.storage[byte] |= mask;
         }
     }
+
+    pub fn get_bits(&self) -> &[u8] {
+        &self.storage
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bits_working() {
+        let mut bits = Bits::new();
+
+        for i in 0..9 {
+            if i % 2 == 0 {
+                bits.push_bit(Bit::ONE);
+            } else {
+                bits.push_bit(Bit::ZERO);
+            }
+        }
+
+        assert_eq!([0b10101010, 0b10000000], bits.get_bits());
+    }
 }

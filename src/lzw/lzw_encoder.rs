@@ -1,11 +1,14 @@
 //! Things usefull for encoding LZW encoded data.
 
+use std::collections::BTreeMap;
+
 use crate::lzw;
+use crate::lzw::word::Word;
 
 /// Used to encode LZW encoded data.
 pub struct LzwEncoder {
-    // words encoded as vec of bytes
-    dictionary: Vec<Vec<u8>>,
+    dictionary: BTreeMap<Vec<u8>, usize>,
+    word_code: usize,
     last_symbol: Option<u8>,
 }
 
@@ -13,10 +16,11 @@ impl LzwEncoder {
     /// Creates new instance of `LzwEncoder` with dictionary initialized
     /// to all ASCII symbols.
     pub fn new() -> Self {
-        let dictionary = lzw::create_dictionary();
+        let dictionary = lzw::create_btree_dictionary();
 
         LzwEncoder {
             dictionary,
+            word_code: 256,
             last_symbol: None,
         }
     }
@@ -28,8 +32,8 @@ impl LzwEncoder {
     {
         let mut codes = vec![];
 
-        while let Some(c) = self.get_next_code(symbols) {
-            codes.push(c);
+        while let Some(code) = self.get_next_code(symbols) {
+            codes.push(code);
         }
 
         codes
@@ -40,66 +44,52 @@ impl LzwEncoder {
     where
         I: Iterator<Item = u8>,
     {
-        let mut word = vec![];
+        let mut curr_word = Word::new();
 
-        if let Some(last_symbol) = self.last_symbol {
-            word.push(last_symbol);
-        } else {
-            let symbol = symbols.next();
-
-            if let Some(symbol) = symbol {
-                word.push(symbol);
-            } else {
-                return None;
-            }
+        match self.last_symbol {
+            Some(last_symbol) => curr_word.add_symbol(last_symbol),
+            None => curr_word.add_symbol(symbols.next()?),
         }
 
-        while self.find_word(&word).is_some() {
-            let symbol = symbols.next();
+        while self.find_word(&curr_word).is_some() {
+            match symbols.next() {
+                Some(symbol) => curr_word.add_symbol(symbol),
+                None => {
+                    self.last_symbol = if curr_word.len() == 1 {
+                        None
+                    } else {
+                        Some(curr_word.get_last_symbol())
+                    };
 
-            if let Some(symbol) = symbol {
-                word.push(symbol);
-            } else {
-                let index = self.get_word_index(&word);
+                    let code = self.get_word_code(&curr_word);
 
-                if word.len() == 1 {
-                    self.last_symbol = None;
-                } else {
-                    let last_symbol = LzwEncoder::get_last_word_symbol(&word);
-                    self.last_symbol = Some(last_symbol);
+                    return Some(code);
                 }
-
-                return Some(index);
             }
         }
 
-        let last_symbol = LzwEncoder::get_last_word_symbol(&word);
-        let index = self.get_word_index(&word[..word.len() - 1]);
+        let code = self.get_word_code(&curr_word.without_last_symbol());
 
-        self.last_symbol = Some(last_symbol);
-        self.dictionary.push(word);
+        self.last_symbol = Some(curr_word.get_last_symbol());
+        self.dictionary
+            .insert(curr_word.get_symbols(), self.word_code);
+        self.word_code += 1;
 
-        Some(index)
-    }
-
-    /// Make sure that word is not empty !!!
-    fn get_last_word_symbol(word: &[u8]) -> u8 {
-        *word.iter().last().expect("has to be some")
+        Some(code)
     }
 
     // Make sure that word exists in dictionary !!!
-    fn get_word_index(&self, word: &[u8]) -> usize {
-        let (index, _) = self.find_word(word).expect("has to be some");
+    fn get_word_code(&self, word: &Word) -> usize {
+        let (_, code) = self.find_word(word).expect("word not in dictionary");
 
-        index
+        code
     }
 
     // Searches for word in dictionary and returns it with its index.
-    fn find_word(&self, word: &[u8]) -> Option<(usize, &Vec<u8>)> {
+    fn find_word(&self, word: &Word) -> Option<(&Vec<u8>, usize)> {
         self.dictionary
-            .iter()
-            .enumerate()
-            .find(|&(_, w)| *w == word)
+            .get_key_value(word.get_symbols_ref())
+            .map(|(a, b)| (a, *b))
     }
 }
 

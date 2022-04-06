@@ -1,8 +1,12 @@
+use crate::elias_omega;
+
+#[derive(Debug)]
 pub enum Bit {
     ONE,
     ZERO,
 }
 
+#[derive(Clone)]
 pub struct Bits {
     storage: Vec<u8>,
     size: usize,
@@ -13,6 +17,20 @@ impl Bits {
         Bits {
             storage: vec![],
             size: 0,
+        }
+    }
+
+    pub fn from_vec(size: usize, storage: Vec<u8>) -> Bits {
+        Bits {
+            size,
+            storage,
+        }
+    }
+
+    pub fn iter(&self) -> BitsIterator {
+        BitsIterator {
+            bits: self,
+            index: 0,
         }
     }
 
@@ -56,6 +74,65 @@ impl Bits {
 
     pub fn get_bits(&self) -> &[u8] {
         &self.storage
+    }
+}
+
+pub struct BitsIterator<'a> {
+    bits: &'a Bits,
+    index: usize,
+}
+
+impl Iterator for BitsIterator<'_> {
+    type Item = Bit;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index < self.bits.size {
+            let bit = self.bits.get_bit(self.index);
+            self.index += 1;
+            Some(bit)
+        } else {
+            None
+        }
+    }
+}
+
+impl From<usize> for Bits {
+    fn from(number: usize) -> Self {
+        let mut start_mask = elias_omega::get_usize_bit_len(number) - 1;
+        let mut bits = Bits::new();
+
+        loop {
+            if number & 1 << start_mask > 0 {
+                bits.push_bit(Bit::ONE);
+            } else {
+                bits.push_bit(Bit::ZERO);
+            }
+
+            if start_mask == 0 {
+                break;
+            }
+
+            start_mask -= 1;
+        }
+
+        return bits;
+    }
+}
+
+impl From<Bits> for usize {
+    fn from(bits: Bits) -> Self {
+       let mut mask = bits.size;
+       let mut number = 0;
+
+       while mask > 0 {
+           if let Bit::ONE = bits.get_bit(bits.size - mask) {
+               number += 1 << (mask - 1);
+           }
+
+           mask -= 1;
+       }
+
+       number
     }
 }
 
@@ -103,5 +180,23 @@ mod tests {
         bits.append_bits(&other_bits);
 
         assert_eq!([0b10101101, 0b00000000], bits.get_bits());
+    }
+
+    #[test]
+    fn from_usize_works() {
+        let number = 137;
+
+        let bits: Bits = number.into();
+
+        assert_eq!([0b10001001], bits.get_bits());
+    }
+
+    #[test]
+    fn usize_from_bits_works() {
+        let number = 137;
+        let bits: Bits = number.into();
+        let other_number: usize = bits.into();
+
+        assert_eq!(number, other_number);
     }
 }

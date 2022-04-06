@@ -26,13 +26,13 @@ impl LzwEncoder {
     }
 
     /// Encodes `symbols` using LZW encoding into `Vec<usize>`.
-    pub fn encode_text<I>(&mut self, symbols: &mut I) -> Vec<usize>
-    where
-        I: Iterator<Item = u8>,
+    pub fn encode_text(&mut self, symbols: &[u8]) -> Vec<usize>
     {
+        let mut symbols_iterator = symbols.iter().map(|s| *s);
+
         let mut codes = vec![];
 
-        while let Some(code) = self.get_next_code(symbols) {
+        while let Some(code) = self.get_next_code(&mut symbols_iterator) {
             codes.push(code);
         }
 

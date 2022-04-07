@@ -1,4 +1,4 @@
-use crate::elias_omega;
+const USIZE_HALF: usize = std::usize::MAX - (std::usize::MAX >> 1);
 
 #[derive(Debug)]
 pub enum Bit {
@@ -8,22 +8,22 @@ pub enum Bit {
 
 #[derive(Clone)]
 pub struct Bits {
-    storage: Vec<u8>,
+    bytes: Vec<u8>,
     size: usize,
 }
 
 impl Bits {
     pub fn new() -> Bits {
         Bits {
-            storage: vec![],
+            bytes: vec![],
             size: 0,
         }
     }
 
-    pub fn from_vec(size: usize, storage: Vec<u8>) -> Bits {
+    pub fn from_vec(size: usize, bytes: Vec<u8>) -> Bits {
         Bits {
             size,
-            storage,
+            bytes,
         }
     }
 
@@ -38,14 +38,14 @@ impl Bits {
         let bit_position = self.size % 8;
 
         if bit_position == 0 {
-            self.storage.push(0);
+            self.bytes.push(0);
         }
 
         if let Bit::ONE = bit {
             let byte = self.size / 8;
-            let mask = 1 << (7 - bit_position);
+            let mask = Bits::create_mask(bit_position);
 
-            self.storage[byte] |= mask;
+            self.bytes[byte] |= mask;
         }
 
         self.size += 1;
@@ -57,23 +57,32 @@ impl Bits {
         }
     }
 
+    pub fn get_bits(&self) -> &[u8] {
+        &self.bytes
+    }
+
     fn get_bit(&self, index: usize) -> Bit {
         if index > self.size - 1 {
             panic!("index too big");
         }
 
         let byte = index / 8;
-        let bit = index % 8;
+        let bit_position = index % 8;
+        let mask = Bits::create_mask(bit_position);
 
-        if self.storage[byte] & 1 << (7 - bit) > 0 {
+        if self.bytes[byte] & mask > 0 {
             Bit::ONE
         } else {
             Bit::ZERO
         }
     }
 
-    pub fn get_bits(&self) -> &[u8] {
-        &self.storage
+    fn create_mask(bit_position: usize) -> u8 {
+        if bit_position > 7 {
+            panic!("too big bit position");
+        }
+
+        1 << (7 - bit_position)
     }
 }
 
@@ -98,7 +107,7 @@ impl Iterator for BitsIterator<'_> {
 
 impl From<usize> for Bits {
     fn from(number: usize) -> Self {
-        let mut start_mask = elias_omega::get_usize_bit_len(number) - 1;
+        let mut start_mask = get_usize_bit_len(number) - 1;
         let mut bits = Bits::new();
 
         loop {
@@ -134,6 +143,18 @@ impl From<Bits> for usize {
 
        number
     }
+}
+
+pub fn get_usize_bit_len(number: usize) -> usize {
+    let mut size = 1;
+    let mut mask = 1;
+
+    while mask < USIZE_HALF && 2 * mask <= number {
+        mask *= 2;
+        size += 1;
+    }
+
+    return size;
 }
 
 #[cfg(test)]
@@ -198,5 +219,17 @@ mod tests {
         let other_number: usize = bits.into();
 
         assert_eq!(number, other_number);
+    }
+
+
+    #[test]
+    fn get_usize_bit_len_works() {
+        let number = 137;
+
+        let bit_len = get_usize_bit_len(number) - 1;
+        let another_bit_len = get_usize_bit_len(bit_len) - 1;
+
+        assert_eq!(0b111, bit_len);
+        assert_eq!(0b10, another_bit_len);
     }
 }

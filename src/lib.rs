@@ -1,33 +1,33 @@
 pub mod bits;
-pub mod elias_omega;
 pub mod lzw;
+pub mod number_encoders;
+
+pub use number_encoders::{NumberDecoder, NumberEncoder};
 
 use bits::Bits;
 use lzw::lzw_decoder::LzwDecoder;
 use lzw::lzw_encoder::LzwEncoder;
 
-pub fn encode(data: &[u8]) -> Bits {
-    let encoded = LzwEncoder::new().encode_text(&data);
+pub use number_encoders::elias::omega::{EliasOmegaDecoder, EliasOmegaEncoder};
 
-    let encoded: Vec<_> = encoded.into_iter().map(|s| s + 1).collect();
+pub fn encode<E>(data: &[u8]) -> Bits where E: NumberEncoder {
+    let encoded_lzw = LzwEncoder::new().encode_text(&data);
 
-    let mut bits = Bits::new();
+    // Needed because elias can't handle 0.
+    let encoded_lzw: Vec<_> = encoded_lzw.into_iter().map(|s| s + 1).collect();
 
-    for e in &encoded {
-        elias_omega::encode_number_and_append(*e, &mut bits);
-    }
+    let encoded_numbers = E::encode(&encoded_lzw);
 
-    bits
+    encoded_numbers
 }
 
-pub fn decode(data: &Bits) -> Vec<u8> {
-    let decoded = elias_omega::decode_number(&data);
+pub fn decode<D>(data: &Bits) -> Vec<u8> where D: NumberDecoder {
+    let decoded_numbers = D::decode(&data);
 
-    let decoded: Vec<_> = decoded.into_iter().map(|s| s - 1).collect();
+    // Needed because elias can't handle 0.
+    let decoded_numbers: Vec<_> = decoded_numbers.into_iter().map(|s| s - 1).collect();
 
-    let mut decoded_iter = decoded.into_iter();
-
-    let decoded = LzwDecoder::new().decode_text(&mut decoded_iter);
+    let decoded = LzwDecoder::new().decode_text(&decoded_numbers);
 
     decoded
 }

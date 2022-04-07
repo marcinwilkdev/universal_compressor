@@ -44,7 +44,7 @@ enum DecodingState {
 pub struct EliasOmegaDecoder;
 
 impl EliasOmegaDecoder {
-    fn decode_zero(numbers: &mut Vec<usize>) -> DecodingState {
+    fn decode_one(numbers: &mut Vec<usize>) -> DecodingState {
         numbers.push(1);
         DecodingState::Empty
     }
@@ -76,7 +76,7 @@ impl NumberDecoder for EliasOmegaDecoder {
 
         for bit in bits.iter() {
             decoding_state = match (decoding_state, bit) {
-                (DecodingState::Empty, Bit::ZERO) => EliasOmegaDecoder::decode_zero(&mut numbers),
+                (DecodingState::Empty, Bit::ZERO) => EliasOmegaDecoder::decode_one(&mut numbers),
                 (DecodingState::Empty, Bit::ONE) => EliasOmegaDecoder::start_decoding_number(),
                 (DecodingState::InsideWord(bits, 0), Bit::ZERO) => {
                     EliasOmegaDecoder::end_decoding_number(&mut numbers, &bits)

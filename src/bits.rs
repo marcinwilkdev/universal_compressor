@@ -21,10 +21,7 @@ impl Bits {
     }
 
     pub fn from_vec(size: usize, bytes: Vec<u8>) -> Bits {
-        Bits {
-            size,
-            bytes,
-        }
+        Bits { size, bytes }
     }
 
     pub fn iter(&self) -> BitsIterator {
@@ -61,6 +58,16 @@ impl Bits {
         &self.bytes
     }
 
+    pub fn shift_left_and_shrink_size(&mut self) {
+        for i in 0..self.size - 1 {
+            self.set_bit(i, self.get_bit(i+1));
+        }
+
+        self.set_bit(self.size - 1, Bit::ZERO);
+
+        self.size -= 1;
+    }
+
     fn get_bit(&self, index: usize) -> Bit {
         if index > self.size - 1 {
             panic!("index too big");
@@ -75,6 +82,29 @@ impl Bits {
         } else {
             Bit::ZERO
         }
+    }
+
+    fn set_bit(&mut self, index: usize, bit: Bit) {
+        if index > self.size - 1 {
+            panic!("index too big");
+        }
+
+        let byte_index = index / 8;
+        let bit_position = index % 8;
+
+        let mut byte = 0;
+
+        for i in 0..8 {
+            if i != bit_position {
+                byte |= self.bytes[byte_index] & Bits::create_mask(i);
+            } else {
+                if let Bit::ONE = bit {
+                    byte |= Bits::create_mask(i);
+                }
+            }
+        }
+
+        self.bytes[byte_index] = byte;
     }
 
     fn create_mask(bit_position: usize) -> u8 {
@@ -130,18 +160,18 @@ impl From<usize> for Bits {
 
 impl From<Bits> for usize {
     fn from(bits: Bits) -> Self {
-       let mut mask = bits.size;
-       let mut number = 0;
+        let mut mask = bits.size;
+        let mut number = 0;
 
-       while mask > 0 {
-           if let Bit::ONE = bits.get_bit(bits.size - mask) {
-               number += 1 << (mask - 1);
-           }
+        while mask > 0 {
+            if let Bit::ONE = bits.get_bit(bits.size - mask) {
+                number += 1 << (mask - 1);
+            }
 
-           mask -= 1;
-       }
+            mask -= 1;
+        }
 
-       number
+        number
     }
 }
 
@@ -221,7 +251,6 @@ mod tests {
         assert_eq!(number, other_number);
     }
 
-
     #[test]
     fn get_usize_bit_len_works() {
         let number = 137;
@@ -231,5 +260,25 @@ mod tests {
 
         assert_eq!(0b111, bit_len);
         assert_eq!(0b10, another_bit_len);
+    }
+
+    #[test]
+    fn set_bit_works() {
+        let number = 0b11010110;
+
+        let mut bits: Bits = number.into();
+        bits.set_bit(0, Bit::ZERO);
+
+        assert_eq!(0b01010110, bits.get_bits()[0]);
+    }
+
+    #[test]
+    fn shift_left_works() {
+        let number = 0b11010110;
+
+        let mut bits: Bits = number.into();
+        bits.shift_left_and_shrink_size();
+
+        assert_eq!(0b10101100, bits.get_bits()[0]);
     }
 }

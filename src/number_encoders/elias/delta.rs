@@ -1,9 +1,9 @@
-//! Things for implementing omega variant of elias encoding and decoding.
+//! Things for implementing delta variant of elias encoding and decoding.
 
 use crate::bits::{self, Bit, Bits};
 use crate::number_encoders::{NumberDecoder, NumberEncoder};
 
-/// Omega variant of elias encoder.
+/// Delta variant of elias encoder.
 pub struct EliasDeltaEncoder;
 
 impl EliasDeltaEncoder {

@@ -1,13 +1,11 @@
 //! Things usefull for encoding LZW encoded data.
 
-use std::collections::BTreeMap;
-
-use crate::lzw::{self, ALPHABET_SIZE};
 use crate::lzw::word::Word;
+use crate::lzw::{self, HashMapDictionary, ALPHABET_SIZE};
 
 /// Used to encode LZW encoded data.
 pub struct LzwEncoder {
-    dictionary: BTreeMap<Vec<u8>, usize>,
+    dictionary: HashMapDictionary,
     word_code: usize,
     last_symbol: Option<u8>,
 }
@@ -16,22 +14,20 @@ impl LzwEncoder {
     /// Creates new instance of `LzwEncoder` with dictionary initialized
     /// to all ASCII symbols.
     pub fn new() -> Self {
-        let dictionary = lzw::create_btree_dictionary();
-
         LzwEncoder {
-            dictionary,
+            dictionary: lzw::create_hashmap_dictionary(),
             word_code: ALPHABET_SIZE as usize + 1,
             last_symbol: None,
         }
     }
 
     /// Encodes `symbols` using LZW encoding into `Vec<usize>`.
-    pub fn encode_text(&mut self, symbols: &[u8]) -> Vec<usize> {
-        let mut symbols_iterator = symbols.iter().map(|s| *s);
+    pub fn encode_text(&mut self, text: &[u8]) -> Vec<usize> {
+        let mut symbols = text.iter().map(|s| *s);
 
         let mut codes = vec![];
 
-        while let Some(code) = self.get_next_code(&mut symbols_iterator) {
+        while let Some(code) = self.get_next_code(&mut symbols) {
             codes.push(code);
         }
 
@@ -60,8 +56,7 @@ impl LzwEncoder {
         let code = self.get_word_code(&curr_word.without_last_symbol());
 
         self.last_symbol = Some(curr_word.get_last_symbol());
-        self.dictionary
-            .insert(curr_word.get_symbols(), self.word_code);
+        self.dictionary.insert(curr_word, self.word_code);
         self.word_code += 1;
 
         Some(code)
@@ -81,11 +76,9 @@ impl LzwEncoder {
         code
     }
 
-    // Searches for word in dictionary and returns it with its index.
-    fn find_word(&self, word: &Word) -> Option<(&Vec<u8>, usize)> {
-        self.dictionary
-            .get_key_value(word.get_symbols_ref())
-            .map(|(a, b)| (a, *b))
+    // Finds word in the dictionary.
+    fn find_word(&self, word: &Word) -> Option<(&Word, usize)> {
+        self.dictionary.get_key_value(word).map(|(a, b)| (a, *b))
     }
 }
 

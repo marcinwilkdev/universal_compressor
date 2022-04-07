@@ -1,61 +1,59 @@
 //! Things usefull for decoding LZW encoded data.
 
-use crate::lzw;
+use crate::lzw::{self, Dictionary, Word};
 
 /// Used to decode LZW encoded data.
 pub struct LzwDecoder {
-    dictionary: Vec<Vec<u8>>,
-    last_word: Option<Vec<u8>>,
+    dictionary: Dictionary,
+    last_word: Option<Word>,
 }
 
 impl LzwDecoder {
     /// Creates new instance of `LzwDecoder` with dictionary initialized
     /// to all ASCII symbols.
     pub fn new() -> LzwDecoder {
-        let dict = lzw::create_dictionary();
-
         LzwDecoder {
-            dictionary: dict,
+            dictionary: lzw::create_dictionary(),
             last_word: None,
         }
     }
 
     /// Decodes LZW encoded `codes` into `Vec<u8>`.
-    pub fn decode_text<I>(&mut self, codes: &mut I) -> Vec<u8>
-    where
-        I: Iterator<Item = usize>,
-    {
+    pub fn decode_text(&mut self, text: &[usize]) -> Vec<u8> {
+        let mut codes = text.into_iter().map(|n| *n);
+
         let mut words = Vec::new();
 
-        while let Some(w) = self.get_next_word(codes) {
-            words.push(w);
+        while let Some(word) = self.get_next_word(&mut codes) {
+            words.push(word);
         }
 
-        words.into_iter().flatten().collect()
+        words
+            .into_iter()
+            .map(Word::get_symbols)
+            .flatten()
+            .collect()
     }
 
     /// Fetches next code from `codes` iterator, transforms it into
     /// word and updates dictionary to handle the rest of codes.
-    fn get_next_word<I>(&mut self, codes: &mut I) -> Option<Vec<u8>>
+    fn get_next_word<I>(&mut self, codes: &mut I) -> Option<Word>
     where
         I: Iterator<Item = usize>,
     {
-        let code = match codes.next() {
-            Some(c) => c,
-            None => return None,
-        };
+        let code = codes.next()?;
 
         match self.find_word(code) {
-            Some(w) => self.word_in_dictionary(w),
+            Some(word) => self.word_in_dictionary(word),
             None => self.word_not_in_dictionary(),
         }
     }
 
-    /// If there exists last word updates it with first symbol
+    /// If last word exists it gets updated with first symbol
     /// of current word. Sets word as new last word.
-    fn word_in_dictionary(&mut self, word: Vec<u8>) -> Option<Vec<u8>> {
+    fn word_in_dictionary(&mut self, word: Word) -> Option<Word> {
         if let Some(mut last_word) = self.last_word.take() {
-            last_word.push(word[0]);
+            last_word.add_symbol(word.get_first_symbol());
             self.dictionary.push(last_word);
         }
 
@@ -66,9 +64,9 @@ impl LzwDecoder {
 
     /// Updates last word with first symbol of itself, adds last word
     /// to dictionary and sets updated last word as new last word.
-    fn word_not_in_dictionary(&mut self) -> Option<Vec<u8>> {
-        let mut last_word = self.last_word.take().expect("has to be some");
-        last_word.push(last_word[0]);
+    fn word_not_in_dictionary(&mut self) -> Option<Word> {
+        let mut last_word = self.last_word.take().expect("there has to exist last word");
+        last_word.add_symbol(last_word.get_first_symbol());
 
         self.dictionary.push(last_word.clone());
         self.last_word = Some(last_word.clone());
@@ -76,9 +74,9 @@ impl LzwDecoder {
         Some(last_word)
     }
 
-    /// Searches for word with `code` in dictionary.
-    fn find_word(&self, code: usize) -> Option<Vec<u8>> {
-        self.dictionary.get(code).map(|v| v.to_vec())
+    /// Finds word in dictionary.
+    fn find_word(&self, code: usize) -> Option<Word> {
+        self.dictionary.get(code).map(|w| w.clone())
     }
 }
 
@@ -90,9 +88,8 @@ mod tests {
     fn lzw_decode_works() {
         let mut lzw_decode_dict = LzwDecoder::new();
         let codes = [0, 1, 256, 258, 257, 1];
-        let mut codes_iter = codes.into_iter();
 
-        let words = lzw_decode_dict.decode_text(&mut codes_iter);
+        let words = lzw_decode_dict.decode_text(&codes);
 
         assert_eq!(vec![0, 1, 0, 1, 0, 1, 0, 1, 0, 1], words);
     }

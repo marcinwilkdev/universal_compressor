@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::lzw;
+use crate::lzw::{self, ALPHABET_SIZE};
 use crate::lzw::word::Word;
 
 /// Used to encode LZW encoded data.
@@ -20,14 +20,13 @@ impl LzwEncoder {
 
         LzwEncoder {
             dictionary,
-            word_code: 256,
+            word_code: ALPHABET_SIZE as usize + 1,
             last_symbol: None,
         }
     }
 
     /// Encodes `symbols` using LZW encoding into `Vec<usize>`.
-    pub fn encode_text(&mut self, symbols: &[u8]) -> Vec<usize>
-    {
+    pub fn encode_text(&mut self, symbols: &[u8]) -> Vec<usize> {
         let mut symbols_iterator = symbols.iter().map(|s| *s);
 
         let mut codes = vec![];
@@ -54,17 +53,7 @@ impl LzwEncoder {
         while self.find_word(&curr_word).is_some() {
             match symbols.next() {
                 Some(symbol) => curr_word.add_symbol(symbol),
-                None => {
-                    self.last_symbol = if curr_word.len() == 1 {
-                        None
-                    } else {
-                        Some(curr_word.get_last_symbol())
-                    };
-
-                    let code = self.get_word_code(&curr_word);
-
-                    return Some(code);
-                }
+                None => return self.end_encoding(curr_word),
             }
         }
 
@@ -76,6 +65,13 @@ impl LzwEncoder {
         self.word_code += 1;
 
         Some(code)
+    }
+
+    // resets last symbol to end loop and returns last word code
+    fn end_encoding(&mut self, curr_word: Word) -> Option<usize> {
+        self.last_symbol = None;
+
+        Some(self.get_word_code(&curr_word))
     }
 
     // Make sure that word exists in dictionary !!!
@@ -121,9 +117,8 @@ mod tests {
     fn lzw_works() {
         let mut lzw_dict = LzwEncoder::new();
         let symbols = [0, 1, 0, 1, 0, 1, 0, 1, 0, 1];
-        let mut symbols_iter = symbols.into_iter();
 
-        let codes = lzw_dict.encode_text(&mut symbols_iter);
+        let codes = lzw_dict.encode_text(&symbols);
 
         assert_eq!(vec![0, 1, 256, 258, 257, 1], codes);
     }

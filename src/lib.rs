@@ -9,6 +9,7 @@ use lzw::lzw_decoder::LzwDecoder;
 use lzw::lzw_encoder::LzwEncoder;
 
 pub use number_encoders::elias::omega::{EliasOmegaDecoder, EliasOmegaEncoder};
+pub use number_encoders::elias::delta::{EliasDeltaDecoder, EliasDeltaEncoder};
 
 pub fn encode<E>(data: &[u8]) -> Bits where E: NumberEncoder {
     let encoded_lzw = LzwEncoder::new().encode_text(&data);

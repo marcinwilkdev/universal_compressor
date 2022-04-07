@@ -53,7 +53,7 @@ impl NumberEncoder for EliasDeltaEncoder {
     }
 }
 
-/// State machine keeping track of elias omega decoding state.
+/// State machine keeping track of elias delta decoding state.
 enum DecodingState {
     Empty,
     InsideLen(Bits, usize),
@@ -61,7 +61,7 @@ enum DecodingState {
     CountingZeros(usize),
 }
 
-/// Omega variant of elias decoder.
+/// Delta variant of elias decoder.
 pub struct EliasDeltaDecoder;
 
 impl EliasDeltaDecoder {

@@ -84,7 +84,7 @@ impl Bits {
         }
     }
 
-    fn set_bit(&mut self, index: usize, bit: Bit) {
+    pub fn set_bit(&mut self, index: usize, bit: Bit) {
         if index > self.size - 1 {
             panic!("index too big");
         }

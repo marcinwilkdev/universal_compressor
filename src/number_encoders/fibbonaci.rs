@@ -94,74 +94,74 @@ impl NumberEncoder for FibbonaciEncoder {
     }
 }
 
-/// State machine keeping track of elias gamma decoding state.
-enum DecodingState {
-    Empty,
-    InsideNumber(Bits, usize),
-    CountingZeros(usize),
-}
+/// State machine keeping track of fibbonaci decoder decoding state.
+// enum DecodingState {
+//     Empty,
+//     InsideNumber(Bits, usize),
+//     CountingZeros(usize),
+// }
 
 /// Gamma variant of elias decoder.
-pub struct FibbonaciDecoder;
+// pub struct FibbonaciDecoder;
 
-impl FibbonaciDecoder {
-    fn decode_one(numbers: &mut Vec<usize>) -> DecodingState {
-        numbers.push(1);
-        DecodingState::Empty
-    }
+// impl FibbonaciDecoder {
+//     fn decode_one(numbers: &mut Vec<usize>) -> DecodingState {
+//         numbers.push(1);
+//         DecodingState::Empty
+//     }
 
-    fn start_counting_zeros() -> DecodingState {
-        DecodingState::CountingZeros(1)
-    }
+//     fn start_counting_zeros() -> DecodingState {
+//         DecodingState::CountingZeros(1)
+//     }
 
-    fn count_zero(n: usize) -> DecodingState {
-        DecodingState::CountingZeros(n + 1)
-    }
+//     fn count_zero(n: usize) -> DecodingState {
+//         DecodingState::CountingZeros(n + 1)
+//     }
 
-    fn end_counting_zeros(n: usize) -> DecodingState {
-        DecodingState::InsideNumber(1.into(), n)
-    }
+//     fn end_counting_zeros(n: usize) -> DecodingState {
+//         DecodingState::InsideNumber(1.into(), n)
+//     }
 
-    fn get_number_bit(
-        mut bits: Bits,
-        len: usize,
-        bit: Bit,
-        numbers: &mut Vec<usize>,
-    ) -> DecodingState {
-        bits.push_bit(bit);
+//     fn get_number_bit(
+//         mut bits: Bits,
+//         len: usize,
+//         bit: Bit,
+//         numbers: &mut Vec<usize>,
+//     ) -> DecodingState {
+//         bits.push_bit(bit);
 
-        if len == 1 {
-            numbers.push(bits.into());
-            DecodingState::Empty
-        } else {
-            DecodingState::InsideNumber(bits, len - 1)
-        }
-    }
-}
+//         if len == 1 {
+//             numbers.push(bits.into());
+//             DecodingState::Empty
+//         } else {
+//             DecodingState::InsideNumber(bits, len - 1)
+//         }
+//     }
+// }
 
-impl NumberDecoder for FibbonaciDecoder {
-    fn decode(bits: &Bits) -> Vec<usize> {
-        let mut numbers = vec![];
+// impl NumberDecoder for FibbonaciDecoder {
+//     fn decode(bits: &Bits) -> Vec<usize> {
+//         let mut numbers = vec![];
 
-        let mut decoding_state = DecodingState::Empty;
+//         let mut decoding_state = DecodingState::Empty;
 
-        for bit in bits.iter() {
-            decoding_state = match (decoding_state, bit) {
-                (DecodingState::Empty, Bit::ONE) => FibbonaciDecoder::decode_one(&mut numbers),
-                (DecodingState::Empty, Bit::ZERO) => FibbonaciDecoder::start_counting_zeros(),
-                (DecodingState::CountingZeros(n), Bit::ZERO) => FibbonaciDecoder::count_zero(n),
-                (DecodingState::CountingZeros(n), Bit::ONE) => {
-                    FibbonaciDecoder::end_counting_zeros(n)
-                }
-                (DecodingState::InsideNumber(bits, len), bit) => {
-                    FibbonaciDecoder::get_number_bit(bits, len, bit, &mut numbers)
-                }
-            }
-        }
+//         for bit in bits.iter() {
+//             decoding_state = match (decoding_state, bit) {
+//                 (DecodingState::Empty, Bit::ONE) => FibbonaciDecoder::decode_one(&mut numbers),
+//                 (DecodingState::Empty, Bit::ZERO) => FibbonaciDecoder::start_counting_zeros(),
+//                 (DecodingState::CountingZeros(n), Bit::ZERO) => FibbonaciDecoder::count_zero(n),
+//                 (DecodingState::CountingZeros(n), Bit::ONE) => {
+//                     FibbonaciDecoder::end_counting_zeros(n)
+//                 }
+//                 (DecodingState::InsideNumber(bits, len), bit) => {
+//                     FibbonaciDecoder::get_number_bit(bits, len, bit, &mut numbers)
+//                 }
+//             }
+//         }
 
-        numbers
-    }
-}
+//         numbers
+//     }
+// }
 
 #[cfg(test)]
 mod tests {

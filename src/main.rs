@@ -19,7 +19,7 @@ struct Opt {
 fn main() {
     let opt = Opt::from_args();
 
-    let data = std::fs::read(opt.file).expect("file doesnt exist");
+    let data = std::fs::read(&opt.file).expect("file doesnt exist");
 
     if opt.decode {
         let (size_bytes, rest) = data.split_at(std::mem::size_of::<usize>());
@@ -28,8 +28,6 @@ fn main() {
 
         let bits = Bits::from_vec(size, bytes);
 
-        assert_eq!("fib", "fib".to_string());
-
         let decoded = match opt.encoding {
             Some(e) if e == "fib" => universal_compressor::decode::<FibbonaciDecoder>(&bits),
             Some(e) if e == "gamma" => universal_compressor::decode::<EliasGammaDecoder>(&bits),
@@ -37,7 +35,7 @@ fn main() {
             _ => universal_compressor::decode::<EliasOmegaDecoder>(&bits),
         };
 
-        std::fs::write(opt.output, &decoded).expect("couldn't write output");
+        std::fs::write(&opt.output, &decoded).expect("couldn't write output");
     } else {
         let encoded = match opt.encoding {
             Some(e) if e == "fib" => universal_compressor::encode::<FibbonaciEncoder>(&data),
@@ -50,7 +48,7 @@ fn main() {
 
         bytes.append(&mut encoded.get_bits().to_vec());
 
-        std::fs::write(opt.output, bytes).expect("couldn't write output");
+        std::fs::write(&opt.output, bytes).expect("couldn't write output");
 
         let data_len = data.len();
         let encoded_len = encoded.len() / 8;
@@ -60,7 +58,7 @@ fn main() {
         println!("Encoded file len (bytes): {}", data_len);
         println!("Encoded code len (bytes): {}", encoded_len);
         println!("Compression ratio: {}", compression_ratio);
-        println!("Encoded file entropy: {}", 0);
-        println!("Encoded code entropy: {}", 0);
+        println!("Encoded file entropy: {}", entropy_calculator::get_file_entropy(&opt.file));
+        println!("Encoded code entropy: {}", entropy_calculator::get_file_entropy(&opt.output));
     }
 }

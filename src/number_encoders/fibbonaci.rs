@@ -1,8 +1,9 @@
 //! Things for implementing fibbonaci encoding.
 
-use crate::bits::{self, Bit, Bits};
+use crate::bits::{Bit, Bits};
 use crate::number_encoders::{NumberDecoder, NumberEncoder};
 
+/// Struct holding cached fibbonaci numbers used for fibbonaci encoding.
 pub struct Fibbonaci {
     cache: Vec<usize>,
 }
@@ -41,23 +42,8 @@ impl Fibbonaci {
     }
 }
 
-/// Gamma variant of elias encoder.
+/// Fibbonaci encoder.
 pub struct FibbonaciEncoder;
-
-impl FibbonaciEncoder {
-    fn encode_number(number: usize, all_bits: &mut Vec<Bits>) {
-        let number_bits: Bits = number.into();
-        all_bits.push(number_bits);
-    }
-
-    fn encode_zeros(number_len: usize, all_bits: &mut Vec<Bits>) {
-        let mut last_bits = Bits::new();
-        for _ in 0..bits::get_usize_bit_len(number_len) - 1 {
-            last_bits.push_bit(Bit::ZERO);
-        }
-        all_bits.push(last_bits);
-    }
-}
 
 impl NumberEncoder for FibbonaciEncoder {
     fn encode(numbers: &[usize]) -> Bits {
@@ -101,17 +87,55 @@ enum DecodingState {
     InsideNumber(usize, usize, bool), // number, index and was last bit one
 }
 
-/// Gamma variant of elias decoder.
-pub struct FibbonaciDecoder;
+impl DecodingState {
+    pub fn next(
+        self,
+        bit: Bit,
+        numbers: &mut Vec<usize>,
+        fibbonaci: &mut Fibbonaci,
+    ) -> DecodingState {
+        match (self, bit) {
+            (DecodingState::Empty, bit) => DecodingState::start_number(bit),
+            (DecodingState::InsideNumber(number, _, true), Bit::ONE) => {
+                DecodingState::end_number(number, numbers)
+            }
+            (DecodingState::InsideNumber(number, index, _), Bit::ONE) => {
+                DecodingState::add_from_fibbonaci(number, index, fibbonaci)
+            }
+            (DecodingState::InsideNumber(number, index, _), Bit::ZERO) => {
+                DecodingState::skip_zero(number, index)
+            }
+        }
+    }
 
-// impl FibbonaciDecoder {
-//     fn decode_bit(number: usize, index: usize, was_one: bool, bit: Bit, numbers: &mut Vec<usize>) -> DecodingState {
-//         match (was_one, bit) {
-//             (true, Bit::ONE) => {numbers.push(number); DecodingState::Empty}
-//             (false, Bit::ONE) => DecodingState::InsideNumber
-//         }
-//     }
-// }
+    fn start_number(bit: Bit) -> DecodingState {
+        match bit {
+            Bit::ONE => DecodingState::InsideNumber(1, 1, true),
+            Bit::ZERO => DecodingState::InsideNumber(0, 1, false),
+        }
+    }
+
+    fn end_number(number: usize, numbers: &mut Vec<usize>) -> DecodingState {
+        numbers.push(number);
+        DecodingState::Empty
+    }
+
+    fn add_from_fibbonaci(
+        mut number: usize,
+        index: usize,
+        fibbonaci: &mut Fibbonaci,
+    ) -> DecodingState {
+        number += fibbonaci.get(index);
+        DecodingState::InsideNumber(number, index + 1, true)
+    }
+
+    fn skip_zero(number: usize, index: usize) -> DecodingState {
+        DecodingState::InsideNumber(number, index + 1, false)
+    }
+}
+
+/// Fibbonaci decoder.
+pub struct FibbonaciDecoder;
 
 impl NumberDecoder for FibbonaciDecoder {
     fn decode(bits: &Bits) -> Vec<usize> {
@@ -121,23 +145,7 @@ impl NumberDecoder for FibbonaciDecoder {
         let mut decoding_state = DecodingState::Empty;
 
         for bit in bits.iter() {
-            decoding_state = match (decoding_state, bit) {
-                (DecodingState::Empty, bit) => match bit {
-                    Bit::ONE => DecodingState::InsideNumber(1, 1, true),
-                    Bit::ZERO => DecodingState::InsideNumber(0, 1, false),
-                },
-                (DecodingState::InsideNumber(number, _, true), Bit::ONE) => {
-                    numbers.push(number);
-                    DecodingState::Empty
-                }
-                (DecodingState::InsideNumber(mut number, index, _), Bit::ONE) => {
-                    number += fibbonaci.get(index);
-                    DecodingState::InsideNumber(number, index + 1, true)
-                }
-                (DecodingState::InsideNumber(number, index, _), Bit::ZERO) => {
-                    DecodingState::InsideNumber(number, index + 1, false)
-                }
-            }
+            decoding_state = decoding_state.next(bit, &mut numbers, &mut fibbonaci);
         }
 
         numbers

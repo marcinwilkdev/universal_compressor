@@ -107,6 +107,10 @@ impl Bits {
         self.bytes[byte_index] = byte;
     }
 
+    pub fn len(&self) -> usize {
+        self.size
+    }
+
     fn create_mask(bit_position: usize) -> u8 {
         if bit_position > 7 {
             panic!("too big bit position");

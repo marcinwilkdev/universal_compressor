@@ -4,10 +4,10 @@ pub mod number_encoders;
 
 pub use number_encoders::{NumberDecoder, NumberEncoder};
 
-use bits::Bits;
 use lzw::lzw_decoder::LzwDecoder;
 use lzw::lzw_encoder::LzwEncoder;
 
+pub use bits::Bits;
 pub use number_encoders::elias::omega::{EliasOmegaDecoder, EliasOmegaEncoder};
 pub use number_encoders::elias::delta::{EliasDeltaDecoder, EliasDeltaEncoder};
 pub use number_encoders::elias::gamma::{EliasGammaDecoder, EliasGammaEncoder};
